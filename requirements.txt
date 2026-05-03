@@ -1,0 +1,10 @@
+numpy
+pandas
+matplotlib
+scikit-learn
+scipy
+h5py
+torch
+optuna
+jupyter
+ipykernel
