@@ -246,3 +246,47 @@ def predict_with_model(
     predictions = np.concatenate(predictions, axis=0).ravel()
 
     return predictions
+
+
+def train_one_epoch_for_recursive_objective(
+    model,
+    train_loader,
+    optimizer,
+    device,
+    l1_lambda=1e-6,
+    l2_lambda=1e-5,
+    grad_clip=1.0,
+):
+    model.train()
+
+    total_loss = 0.0
+    total_samples = 0
+
+    for X_batch, y_batch in train_loader:
+        X_batch = X_batch.to(device)
+        y_batch = y_batch.to(device)
+
+        optimizer.zero_grad(set_to_none=True)
+
+        y_pred = model(X_batch)
+
+        loss = l1_l2_regularized_loss(
+            model=model,
+            y_pred=y_pred,
+            y_true=y_batch,
+            l1_lambda=l1_lambda,
+            l2_lambda=l2_lambda,
+        )
+
+        loss.backward()
+
+        if grad_clip is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+
+        optimizer.step()
+
+        batch_size = X_batch.size(0)
+        total_loss += loss.item() * batch_size
+        total_samples += batch_size
+
+    return total_loss / total_samples

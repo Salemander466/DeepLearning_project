@@ -75,7 +75,7 @@ class CausalResidualBlock(nn.Module):
         self.activation = nn.GELU()
         
         if in_channels != out_channels:
-            self.residual_conv = nn.Conv1d(
+            self.residual_projection = nn.Conv1d(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 kernel_size=1,
@@ -194,20 +194,25 @@ class ForwardLateralCausalCNN(nn.Module):
         
     def _fix_input_shape(self, x):
         if x.ndim != 3:
-            
-            raise ValueError(f"Input must be 3D (batch_size, channels, timesteps). Got {x.shape}D.")
-        
-        if x.shape[1] != self.input_channels:
-            return x 
-        
+            raise ValueError(
+                f"Expected 3D input. Got shape {tuple(x.shape)}."
+            )
+
+        # Already PyTorch format: (batch, channels, lookback)
+        if x.shape[1] == self.input_channels:
+            return x
+
+        # Keras format: (batch, lookback, channels)
         if x.shape[2] == self.input_channels:
             return x.permute(0, 2, 1)
-        
-        raise ValueError(f"Input has {x.shape[1]} channels and {x.shape[2]} timesteps, but expected {self.input_channels} channels.")
-    
-    def foward(self, x):
+
+        raise ValueError(
+            f"Input shape {tuple(x.shape)} does not match "
+            f"input_channels={self.input_channels}."
+        )
+    def forward(self, x):
         x = self._fix_input_shape(x)
-        
+
         out1 = self.stem(x)
         out2 = self.block1(out1)
         out3 = self.block2(out2)
@@ -216,12 +221,14 @@ class ForwardLateralCausalCNN(nn.Module):
         out6 = self.block5(out5)
         out7 = self.block6(out6)
 
-        global_average = x.mean(dim=1)
+        global_average = out7.mean(dim=-1)
         last_state = out7[:, :, -1]
+
         features = torch.cat([global_average, last_state], dim=1)
+
         output = self.regressor(features)
-        
-        return output.squeeze(1)
+
+        return output.squeeze(-1)
     
     
     

@@ -43,7 +43,7 @@ def save_or_show(
     if show:
         plt.show()
         
-    plt.clear(fig)
+    plt.close(fig)
     
     return saved_path
 

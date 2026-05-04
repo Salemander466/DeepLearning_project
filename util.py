@@ -174,7 +174,7 @@ def load_laser_array(
         
     arr = keep_2d_with_time(arr, name="laser_array")
     
-    if column is not Nones:
+    if column is not None:
         if column < 0 or column >= arr.shape[1]:
             raise ValueError(f"Column index {column} is out of bounds for array with shape {arr.shape}")
         arr = arr[:, column]
@@ -253,8 +253,20 @@ def inverse_scale_series(
     return scaler.inverse_transform(y_scaled).ravel()
 
 
+def infer_input_channels(X, lookback):
+    
+    if X.ndim != 3:
+        raise ValueError(f"Expected 3D input. Got shape {X.shape}.")
 
+    if X.shape[1] == lookback:
+        return X.shape[2]
 
+    if X.shape[2] == lookback:
+        return X.shape[1]
+
+    raise ValueError(
+        f"Cannot infer input channels from shape {X.shape} with lookback={lookback}."
+    )
    
 
 

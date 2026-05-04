@@ -1,0 +1,43 @@
+{
+    "model_name": "ForwardLateralCausalCNN",
+    "study_name": "forward_lateral_causal_cnn_recursive_200_tuning",
+    "created_at": "2026-05-04 12:42:17",
+    "file_path": "Xtrain.mat",
+    "variable_name": "Xtrain",
+    "column": null,
+    "lookback": 145,
+    "lookback_candidates": [
+        90,
+        100,
+        110,
+        120,
+        130
+    ],
+    "recursive_steps": 200,
+    "scaler_type": "standard",
+    "framework": "keras",
+    "input_channels": 1,
+    "base_channels": 64,
+    "kernel_size": 3,
+    "dropout": 0.15,
+    "n_trials": 25,
+    "objective": "recursive_200_mae_real_scale",
+    "early_stopping_metric": "recursive_200_mae_real_scale",
+    "best_trial_number": 7,
+    "best_recursive_200_mae_real": 1.9766680086116601,
+    "best_recursive_200_mse_real": 7.606012679749699,
+    "best_recursive_200_rmse_real": 2.757900048904909,
+    "best_recursive_200_r2_real": 0.9961690692396267,
+    "best_params": {
+        "lookback": 145,
+        "batch_size": 32,
+        "epochs": 190,
+        "learning_rate": 0.000606305915903521,
+        "l1_lambda": 8.594116881537969e-07,
+        "l2_lambda": 2.2239488386678614e-05,
+        "grad_clip": 0.2,
+        "patience": 35
+    },
+    "best_epoch_from_trial": 75,
+    "note": "This Optuna study optimizes the assignment metric directly: 200-step recursive MAE after inverse-transforming predictions to the original scale. The lookback window p is also tuned."
+}
