@@ -28,6 +28,7 @@ def make_output_dir(output_dir: Union[str, Path]) -> Path:
     return output_path
 
 
+#This funciton makes the input shape consistent for the model. It checks if the input is in the correct format and permutes it if necessary. This allows the model to accept both PyTorch and Keras style inputs without errors.
 def save_or_show(
     fig: plt.Figure,
     save_path: Optional[Union[str, Path]] = None,
@@ -47,6 +48,9 @@ def save_or_show(
     
     return saved_path
 
+
+#This function plots all the analysis that we will need for the report. It includes the real vs predicted values, the residuals over time, the error distribution, the predicted vs actual scatter plot, and a binned regression confusion graph. This will help us visualize the performance of our model in different ways and identify any patterns or issues in the predictions.
+#Shows the actual signal and the model prediction together.
 def plot_real_vs_predicted(    y_true: ArrayLike,
     y_pred: ArrayLike,
     title: str = "Real vs Predicted Values",
@@ -68,6 +72,7 @@ def plot_real_vs_predicted(    y_true: ArrayLike,
     return save_or_show(fig, save_path=save_path, show=show)
 
 
+#plot_residuals() shows the error over time. This can help us identify if there are any patterns in the errors, such as increasing error over time or specific time steps where the model struggles.
 def plot_residuals(
     y_true: ArrayLike,
     y_pred: ArrayLike,
@@ -90,6 +95,8 @@ def plot_residuals(
     
     return save_or_show(fig, save_path=save_path, show=show)
 
+
+#Plot error into a histogram
 def plot_error_histogram(
     y_true: ArrayLike,
     y_pred: ArrayLike,
@@ -110,6 +117,7 @@ def plot_error_histogram(
     return save_or_show(fig, save_path=save_path, show=show)
 
 
+#This function plots the predicted values against the actual values in a scatter plot. This can help us see how well the predictions align with the true values and identify any systematic biases or patterns in the predictions.
 def plot_predicted_vs_actual_scatter(
     y_true: ArrayLike,
     y_pred: ArrayLike,
@@ -131,8 +139,7 @@ def plot_predicted_vs_actual_scatter(
 
 
 
-#Confusion matrix 
-
+#These three functions make and Plot the Confusion matrix for regression. This is a way to visualize how well the model is doing in different ranges of the target variable. It bins the true and predicted values into categories and then counts how many predictions fall into each category compared to the true categories. This can help us see if the model is systematically overestimating or underestimating in certain ranges.
 def make_regression_bins(
     values: ArrayLike,
     n_bins: int = 5,
@@ -230,6 +237,8 @@ def plot_regression_confusion_graph(
     return save_or_show(fig, save_path=save_path, show=show)
 
 
+
+# This is the final report after running the hyperprameter tuning and training the final model. It then generates all the plots and metrics.
 def create_single_run_report(
     y_true: ArrayLike,
     y_pred: ArrayLike,

@@ -1,4 +1,4 @@
-
+#This file contains all the utility functions for loading and preprocessing the data, as well as some helper functions for scaling and inverse scaling the data. It also includes a function to inspect the contents of the .mat file and get a summary of the variables it contains. These functions are used throughout the project to handle the data and prepare it for training and evaluation.
 import json
 import math
 from pathlib import Path
@@ -21,6 +21,8 @@ from sklearn.metrics import (
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 
 
+
+#This function is used keep the .mat file within the proper format, and to make sure that the data is in the right shape and format for the rest of the code. It also checks for any non-finite values in the data, which could cause issues during training and evaluation.
 def keep_1d (x: ArrayLike, name: str= "array") -> np.ndarray:
     
     #To make sure that there is one column in the dataframe
@@ -49,6 +51,8 @@ def keep_1d (x: ArrayLike, name: str= "array") -> np.ndarray:
     
     return arr
     
+    
+#This functions is used to keep the data in the right shape for the model, which expects 2D arrays with the time dimension as one of the dimensions. It also checks for non-finite values and ensures that the data is in a numeric format.
 def keep_2d_with_time(x: ArrayLike, name: str= "array") -> np.ndarray:
     
     arr = np.asarray(x, dtype=float )
@@ -68,6 +72,8 @@ def keep_2d_with_time(x: ArrayLike, name: str= "array") -> np.ndarray:
                          
     return arr
 
+
+#This funciton loads the .mat file and extracts all the variables in it. 
 def load_mat_file(
     file_path: Union[str, Path],
     variable_name: Optional[str] = None,
@@ -127,7 +133,7 @@ def load_mat_file(
 
 
 
-
+#This lets us inpsect the contents of the .mat file and get a summary of the variables it contains, including their shapes, data types, and basic statistics. 
 def inspect_mat_file(file_path: Union[str, Path]) -> pd.DataFrame:
  
 
@@ -157,7 +163,7 @@ def inspect_mat_file(file_path: Union[str, Path]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-
+#This function is used to infer the number of input channels for the model based on the shape of the input data and the lookback window. It checks if the time dimension matches the lookback window and returns the other dimension as the number of input channels. This allows the model to be flexible with different input shapes, as long as one of the dimensions matches the lookback window.
 def load_laser_array(
     file_path: Union[str, Path] = "Xtrain.mat",
     variable_name: Optional[str] = None,
@@ -185,7 +191,7 @@ def load_laser_array(
 
 
 
-
+#This make sure the that the timesetps are consistent across the different convolutional blocks, and that the modle can handle the input data correctly, even if it is in a different format (e.g. Keras-style vs PyTorch-style). It also ensures that the model can be trained and evaluated without errors due to shape mismatches or non-finite values in the data.
 def chronological_train_val_split(
     data_array: ArrayLike, val_fraction: float = 0.2)-> Tuple[np.ndarray, np.ndarray]:
     x = keep_2d_with_time(data_array, name="data_array")
@@ -205,6 +211,10 @@ def chronological_train_val_split(
     return train_array, val_fraction
 
 
+#get_scaler() chooses which scaler to use. 
+#Standard: subtracts mean and divides by standard deviation
+#Minmax:   rescales values into a fixed range, usually 0 to 1
+#Robust:   scales using median and interquartile range, better if there are outliers
 def get_scaler(scalar_type: str = "standard") -> Any:
     scalar_type = scalar_type.lower()
     if scalar_type == "standard":
@@ -217,17 +227,24 @@ def get_scaler(scalar_type: str = "standard") -> Any:
     raise ValueError(f"Unsupported scaler type: {scalar_type}. Supported types are 'standard', 'minmax', and 'robust'.")
 
 
+
+#add_feature_to_scaler() fits a scaler on the training features. 
+#1. Makes sure the training data is 2D.
+#2. Creates the scaler.
+#3. Fits the scaler using only the training data. 
+#the scaler should be fitted only on training data, not validation or test data, because fitting on future/test data would cause data leakage.
 def add_feature_to_scaler(train_arry: ArrayLike, scalar_type: str = "standard") -> Any:
     x_train = keep_2d_with_time(train_arry, name="train_array")
     scaler = get_scaler(scalar_type)
     scaler.fit(x_train)
     return scaler
 
+#applies the fitted scaler to feature data. It does not fit a new scaler. It only transforms the data using a scaler that was already fitted. 
 def scale_feature_arry(data_array:ArrayLike, scaler: Any,) -> np.ndarray:
     x = keep_2d_with_time(data_array, name="data_array")
     return scaler.transform(x)
 
-
+#fits a scaler on the target values. It reshapes the target from: (samples,) to (samples, 1), because sklearn scalers expect 2D input. This is separate from the feature scaler because the target is the value the model predicts.
 def fit_target_scaler(
     train_target: ArrayLike,
     scaler_type: str = "standard",
@@ -238,6 +255,8 @@ def fit_target_scaler(
     scaler.fit(y)
     return scaler
 
+
+#It converts the target into the scaled space used during training. The model learns to predict scaled values, not raw 2-255 values.
 def scale_target_series(
     target_series: ArrayLike,
     scaler: Any,
@@ -245,6 +264,8 @@ def scale_target_series(
     y = keep_1d(target_series, name="target_series").reshape(-1, 1)
     return scaler.transform(y).ravel()
 
+
+#This is very important for your assignment because your final MAE/RMSE should be computed on the original laser scale, not the scaled values.
 def inverse_scale_series(
     scaled_series: ArrayLike,
     scaler: Any,
@@ -253,6 +274,17 @@ def inverse_scale_series(
     return scaler.inverse_transform(y_scaled).ravel()
 
 
+
+#figures out how many input channels/features the model has.
+#Model can accept two possible input formats:
+#Keras-style:   (samples, lookback, features)
+#PyTorch-style: (samples, features, lookback)
+#Scaling functions:
+#Prepare the data so the model trains better.
+#Inverse scaling:
+#Converts predictions back to real values.
+#infer_input_channels:
+#Tells the model how many features/channels are in each time step.
 def infer_input_channels(X, lookback):
     
     if X.ndim != 3:

@@ -19,8 +19,9 @@ def set_seed(seed: int = 42):
     torch.backends.cudnn.benchmark = True
     
     
-#Model Components
-
+#Model Components: TCN-inspired Causal Residual CNN
+#First, CausalConv1d is the basic time-series convolution layer. It pads only on the left side of the sequence:
+#That means the model only looks backward in time. It does not look at future values. This is important because forecasting must only use past information.
 class CausalConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, dilation=1):
         super().__init__()
@@ -38,7 +39,7 @@ class CausalConv1d(nn.Module):
         x = F.pad(x, (self.left_padding, 0))
         return self.conv(x)
     
-    
+# The CausalResidualBlock is a standard residual block with two causal convolutional layers, batch normalization, and dropout. The residual connection ensures that the model can learn identity mappings if needed, which helps with training deeper networks. 
 class CausalResidualBlock(nn.Module):
     def __init__(
         self,
@@ -82,7 +83,8 @@ class CausalResidualBlock(nn.Module):
             )
         else:
             self.residual_projection = nn.Identity()
-            
+    
+    #How the model is connected
     def forward(self, x):
         residual = self.residual_projection(x)
         
@@ -95,12 +97,14 @@ class CausalResidualBlock(nn.Module):
         out = self.norm2(out)
         out = self.dropout(out)
         
+        #That is the residual, or skip, connection. It means the block keeps the original information and adds the new learned pattern on top of it. This helps the model train more stably and prevents useful earlier information from being lost
         out = out + residual
         out = self.activation(out)
         
         return out
     
-    
+
+# The ForwardLateralCausalCNN is the main model class. It consists of an initial causal convolutional layer (the "stem") followed by 6 residual blocks with increasing dilation rates. The dilation rates (1, 2, 4, 8, 16, 32) allow the model to capture patterns at multiple time scales. After the convolutional layers, it applies global average pooling and takes the last time step's features, concatenates them, and passes through a fully connected regressor to produce the final forecast.
 class ForwardLateralCausalCNN(nn.Module):
     def __init__(
         self,
@@ -127,6 +131,8 @@ class ForwardLateralCausalCNN(nn.Module):
             nn.GELU(),
         )
 
+        #The dilation values are important: they allow the model to capture patterns at different time scales. The first block captures short-term patterns, while the later blocks can capture longer-term dependencies without needing a very deep network.
+        #base_channels
         self.block1 = CausalResidualBlock(
             in_channels=base_channels,
             out_channels=base_channels,
@@ -134,7 +140,7 @@ class ForwardLateralCausalCNN(nn.Module):
             dilation=1,
             dropout=dropout,
         )
-
+        #base_channels
         self.block2 = CausalResidualBlock(
             in_channels=base_channels,
             out_channels=base_channels,
@@ -143,6 +149,7 @@ class ForwardLateralCausalCNN(nn.Module):
             dropout=dropout,
         )
 
+        #base_channels * 2
         self.block3 = CausalResidualBlock(
             in_channels=base_channels,
             out_channels=base_channels * 2,
@@ -151,6 +158,7 @@ class ForwardLateralCausalCNN(nn.Module):
             dropout=dropout,
         )
 
+        #base_channels * 2
         self.block4 = CausalResidualBlock(
             in_channels=base_channels * 2,
             out_channels=base_channels * 2,
@@ -159,6 +167,7 @@ class ForwardLateralCausalCNN(nn.Module):
             dropout=dropout,
         )
 
+        #base_channels * 4
         self.block5 = CausalResidualBlock(
             in_channels=base_channels * 2,
             out_channels=base_channels * 4,
@@ -166,7 +175,8 @@ class ForwardLateralCausalCNN(nn.Module):
             dilation=16,
             dropout=dropout,
         )
-
+        
+        #base_channels * 4
         self.block6 = CausalResidualBlock(
             in_channels=base_channels * 4,
             out_channels=base_channels * 4,
@@ -192,6 +202,7 @@ class ForwardLateralCausalCNN(nn.Module):
             nn.Linear(64, 1),
         )
         
+    #Makes sure the input has the correct shape before it goes into Conv1d.
     def _fix_input_shape(self, x):
         if x.ndim != 3:
             raise ValueError(
@@ -221,11 +232,17 @@ class ForwardLateralCausalCNN(nn.Module):
         out6 = self.block5(out5)
         out7 = self.block6(out6)
 
+        #After the convolution blocks, the model creates two summaries:
+        #global_average summarizes what the model learned across the whole input window.
+        #last_state summarizes what the model learned at the most recent time step.
         global_average = out7.mean(dim=-1)
         last_state = out7[:, :, -1]
 
-        features = torch.cat([global_average, last_state], dim=1)
 
+        #Then it combines them:
+        features = torch.cat([global_average, last_state], dim=1)
+        #So the final regressor gets both: overall window information + most recent time information. This allows the model to make a more informed forecast by considering both the general patterns in the window and the latest state.
+        
         output = self.regressor(features)
 
         return output.squeeze(-1)
@@ -233,6 +250,8 @@ class ForwardLateralCausalCNN(nn.Module):
     
     
 
+
+#L1 and L2 regularized loss function for training the model. This is used in the training loop to compute the loss with both MSE and regularization penalties.
 def l1_l2_regularized_loss(
     model,
     y_pred,

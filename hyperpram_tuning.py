@@ -62,9 +62,7 @@ DROPOUT = 0.15
 TRIAL_PRINT_EVERY = 1
 
 
-#BASED OF OS and device gpu avaliablity 
-
-
+#BASED OF OS and device gpu avaliablity, our team had both Mac and Windows so we want to make sure it worked for both.
 SYSTEM_NAME = platform.system()
 
 if SYSTEM_NAME == "Darwin":
@@ -112,7 +110,7 @@ full_data_real = load_full_data_200(
 print("Full data shape:", full_data_real.shape)
 
 
-
+#Hyperprameter tuning with 200 of the last points as the point of optimization. This function uses early stop to make sure the we don't waste training time. It also uses Optuna for hyperprameter tuning
 def train_model_for_recursive_trial(
     trial,
     model,
@@ -129,16 +127,11 @@ def train_model_for_recursive_trial(
     min_delta=1e-6,
     print_every=1,
 ):
-    """
-    Early stopping uses:
-        recursive 200-step MAE on original scale
-
-    Optuna objective uses:
-        recursive 200-step MAE on original scale
-    """
 
     model = model.to(device)
 
+
+    #Load dataa
     train_loader = make_train_loader(
         X_train=data["X_train"],
         y_train=data["y_train"],
@@ -146,6 +139,7 @@ def train_model_for_recursive_trial(
         shuffle=True,
     )
 
+    #load Optimizer and scheduler
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=learning_rate,
@@ -160,6 +154,8 @@ def train_model_for_recursive_trial(
         min_lr=1e-6,
     )
 
+
+    # Initialize tracking variables for best metrics and early stopping
     best_recursive_mae = float("inf")
     best_recursive_mse = float("inf")
     best_recursive_rmse = float("inf")
@@ -171,6 +167,8 @@ def train_model_for_recursive_trial(
 
     history_rows = []
 
+    
+    #print to for testing
     print("\n" + "=" * 100)
     print(f"Starting Trial {trial.number}")
     print(f"lookback p       = {data['lookback']}")
@@ -205,6 +203,8 @@ def train_model_for_recursive_trial(
             device=device,
         )
 
+        
+        #Using 200-step recursive MAE on the original scale as the main metric for optimization, but also tracking MSE, RMSE, and R2 for more comprehensive evaluation and analysis of the model's performance on the recursive forecasting task.
         recursive_mae = recursive_metrics["recursive_200_mae_real"]
         recursive_mse = recursive_metrics["recursive_200_mse_real"]
         recursive_rmse = recursive_metrics["recursive_200_rmse_real"]
@@ -213,7 +213,8 @@ def train_model_for_recursive_trial(
         scheduler.step(recursive_mae)
 
         current_lr = optimizer.param_groups[0]["lr"]
-
+        
+        #Print the current trial's progress and results at each epoch, including the training loss, recursive 200-step MAE, MSE, RMSE, R2 on the original scale, best recursive 200-step MAE so far, number of epochs without improvement, and current learning rate. This provides real-time feedback on how the trial is progressing and allows us to monitor the optimization process closely.
         trial.report(recursive_mae, step=epoch)
 
         if trial.should_prune():
@@ -232,6 +233,7 @@ def train_model_for_recursive_trial(
 
         improved = recursive_mae < (best_recursive_mae - min_delta)
 
+        #Make sure that the model is keep improving on the recursive 200 step and counts how many tries of nonimprovement
         if improved:
             best_recursive_mae = recursive_mae
             best_recursive_mse = recursive_mse
@@ -278,6 +280,7 @@ def train_model_for_recursive_trial(
                 f"lr: {current_lr:.2e} {improvement_marker}"
             )
 
+        #After each epoch this displays if there was no improvement
         if epochs_without_improvement >= patience:
             print(
                 f"Trial {trial.number} early stopped at epoch {epoch}. "
@@ -313,7 +316,7 @@ os.makedirs("reports/optuna_recursive_200_forward_lateral_causal_cnn", exist_ok=
 
 
 
-
+#Past trial hyperparameters and results for reference:
 # def objective(trial):
 #     """
 #     Optuna minimizes:
@@ -450,6 +453,8 @@ os.makedirs("reports/optuna_recursive_200_forward_lateral_causal_cnn", exist_ok=
 
 #     return objective_value
 
+
+#Hyperpramerter to tune for the ForwardLateralCausalCNN model on the recursive 200-step forecasting task. After the objective function above that is commented was run. With more optimized ranged of hyperparmeter 
 def objective(trial):
     """
     Optuna minimizes:
@@ -603,9 +608,7 @@ def objective(trial):
 
 
 
-#Call back
-
-
+#This prints the training process to make sure everything is working. 
 def print_trial_callback(study, trial):
     print("\n" + "-" * 100)
     print(f"Completed trial: {trial.number}")
@@ -637,9 +640,7 @@ def print_trial_callback(study, trial):
     print("-" * 100)
 
 
-# ------------------------------------------------------------
-# Run Optuna
-# ------------------------------------------------------------
+#THis funciton runs the optuna study with the defined objective and prints the results. It also saves the trials and the best config for later analysis and retraining the final model with the best parameters.
 
 sampler = optuna.samplers.TPESampler(seed=SEED)
 
@@ -664,9 +665,7 @@ study.optimize(
 )
 
 
-# ------------------------------------------------------------
-# Save trials
-# ------------------------------------------------------------
+#This saves the best trials 
 
 trials_df = study.trials_dataframe()
 trials_df.to_csv(
@@ -684,9 +683,7 @@ print("\nTop trials:")
 display(trials_df.sort_values("value", ascending=True).head(10))
 
 
-# ------------------------------------------------------------
-# Save best config
-# ------------------------------------------------------------
+#Saves the best parameter into a json file for later analysis and to tighten the range of hyperparmeter tuning
 
 best_params = study.best_params
 BEST_LOOKBACK = int(best_params["lookback"])
@@ -737,9 +734,7 @@ with open("best_optuna_config_recursive_200.json", "w") as f:
 print("\nSaved config to: best_optuna_config_recursive_200.json")
 
 
-# ------------------------------------------------------------
-# Retrain final model using best recursive-200 parameters
-# ------------------------------------------------------------
+#This retrains the model with the best hyperparmeters from the tuning so that ican be saved. 
 
 best_data = prepare_recursive_train_data(
     full_data_real=full_data_real,
@@ -790,9 +785,7 @@ print("\nFinal retrained best recursive 200 metrics:")
 print(best_metrics)
 
 
-# ------------------------------------------------------------
-# Final recursive 200-step predictions
-# ------------------------------------------------------------
+#This evaluates the model that is about to be saved. To see if it kept consistency. 
 
 final_eval = evaluate_recursive_200_original_scale(
     model=best_model,

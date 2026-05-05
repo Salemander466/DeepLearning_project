@@ -24,7 +24,7 @@ import torch
 from util import keep_1d
 
 
-
+#Safety funciton to make sure the true and predicted values are aligned and have the same length, and are 1d arrays.
 def align_true_pred(
     y_true: ArrayLike,
     y_pred: ArrayLike,
@@ -39,6 +39,8 @@ def align_true_pred(
     return yt, yp
 
 
+
+#Compute evaluation metrics without 200 step recursive forecasting, just on the test set. (This is for the one step forecasting evaluation)
 def compute_forecast_metrics(
     y_true: ArrayLike,
     y_pred: ArrayLike,
@@ -63,9 +65,13 @@ def compute_forecast_metrics(
         "residual_max": float(np.max(residuals)),
     }
     
+    
+#Convert into dataframe for better visualization and comparison across models.
 def metrics_to_dataframe(metrics: Dict[str, float]) -> pd.DataFrame:
     return pd.DataFrame([metrics])
 
+
+#function that generates the 200-step recursive forecast, but it does it in the scaled/normalized space, not the original 2-255 laser scale
 def recursive_forecast_scaled(
     model,
     initial_window_scaled,
@@ -115,6 +121,8 @@ def recursive_forecast_scaled(
 
     return np.asarray(preds_scaled, dtype=float)
 
+
+#Proper evaluation function for the 200 step recursive forecasting, which first generates the 200 step forecast in the scaled space, then inverse transforms it back to the original scale, and then computes the metrics on the real scale. This is the main evaluation function for the recursive forecasting performance on the last 200 points of the original dataset.
 def evaluate_recursive_200_original_scale(
     model,
     data,

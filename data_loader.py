@@ -10,15 +10,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 
+
+
+#This was the onestep window for when we want to test if the model would work before hyperprametere tuning.
 def make_one_step_windows(
     feature_array_scaled: ArrayLike,
     target_series_scaled: ArrayLike,
     lookback: int,
 ) -> Tuple[np.ndarray, np.ndarray]:
     
+    # Convert to numpy arrays and check dimensions and add a onestep window 
+    
     X_arr = keep_2d_with_time(feature_array_scaled, name="feature_array_scaled")
     y_arr = keep_1d(target_series_scaled, name="target_series_scaled")
     
+    
+    #Safety checks
     if len(X_arr) != len(y_arr):
         raise ValueError(f"Length of feature array ({len(X_arr)}) and target series ({len(y_arr)}) must be the same.")
     
@@ -28,6 +35,8 @@ def make_one_step_windows(
     if len(X_arr) <= lookback:
         raise ValueError(f"Lookback ({lookback}) must be less than the number of samples ({len(X_arr)}).")
     
+    
+    # Once satisfied with the input, create the one step windows for features and targets.
     X = []
     y = []
     
@@ -37,6 +46,10 @@ def make_one_step_windows(
         
     return np.array(X), np.array(y)
 
+
+
+# Reshape for both keras and pytorch
+#Implementation for Keras 
 def reshape_for_keras_cov1d(X: ArrayLike) -> np.ndarray:
     x_reshaped = np.asarray(X, dtype=float)
     
@@ -45,15 +58,25 @@ def reshape_for_keras_cov1d(X: ArrayLike) -> np.ndarray:
     
     return x_reshaped
 
+
+#Implementation for Pytorch 
 def reshape_for_pytorch_conv1d(X: ArrayLike) -> np.ndarray:
+    
+    #Reshape 
     x_reshaped = np.asarray(X, dtype=float)
     
+    #warnign if the last two dimensions are the same, as this may indicate a potential issue with the input shape.
     if x_reshaped.ndim != 3:
         raise ValueError(f"Input array must be 3D (samples, timesteps, features). Got {x_reshaped.shape}D.")
     
     return x_reshaped.transpo
+#So that multiple different model types can be used for testing. 
 
+
+
+#Prepreocsseing the data from the dataloader
 def prepare_train_val_data(
+    #Declare path here as baseline
     file_path: Union[str, Path] = "Xtrain.mat",
     variable_name: Optional[str] = None,
     column: Optional[int] = None,
@@ -64,12 +87,16 @@ def prepare_train_val_data(
     framework: str = "keras",
 ) -> Dict[str, Any]:
     
+    
+    #Get data from .mat file and do some checks on the data, then split into train and validation sets.
     data_real = load_laser_array(
         file_path=file_path,
         variable_name=variable_name,
         column=column,
     )
 
+    
+    #Satefy column check
     if target_column < 0 or target_column >= data_real.shape[1]:
         raise IndexError(
             f"target_column must be between 0 and {data_real.shape[1] - 1}."
@@ -77,6 +104,9 @@ def prepare_train_val_data(
 
     target_real = data_real[:, target_column]
 
+
+
+    #Train test split for time series data 
     train_real, val_real = chronological_train_val_split(
         data_array=data_real,
         val_fraction=val_fraction,
@@ -85,16 +115,23 @@ def prepare_train_val_data(
     train_target_real = train_real[:, target_column]
     val_target_real = val_real[:, target_column]
 
+    
+    
+    #Add feature to scaler and fit the target scaler on the training data, then scale the features and targets for both train and validation sets.
     feature_scaler = add_feature_to_scaler(
         train_array=train_real,
         scaler_type=scaler_type,
     )
 
+
+    #Fit scaler to the y 
     target_scaler = fit_target_scaler(
         train_target=train_target_real,
         scaler_type=scaler_type,
     )
-
+    
+    
+    #Scale the features and targets for both train and validation sets.
     train_scaled = scale_feature_arry(train_real, feature_scaler)
     val_scaled = scale_feature_arry(val_real, feature_scaler)
 
@@ -124,6 +161,8 @@ def prepare_train_val_data(
         lookback=lookback,
     )
 
+    
+    #Depending on framework reshape the data.
     if framework == "keras":
         X_train = reshape_for_keras_cov1d(X_train_raw)
         X_val = reshape_for_keras_cov1d(X_val_raw)
@@ -170,6 +209,7 @@ def prepare_train_val_data(
 
 
 
+#Dataloader for pytorch models 
 def make_torch_dataloaders(
     X_train,
     y_train,
@@ -202,6 +242,9 @@ def make_torch_dataloaders(
     
     return train_laoder, val_dataloader
 
+
+
+#This functino is for when we want to test on the last 200 points of the orignal data set
 def load_full_data_200(file_path="Xtrain.mat", variable_name=None, column=None):
     
     if "load_laser_array" in globals():
@@ -242,6 +285,7 @@ def load_full_data_200(file_path="Xtrain.mat", variable_name=None, column=None):
     if arr.ndim == 1:
         arr = arr.reshape(-1, 1)
 
+    #Make sure the column order is correct
     elif arr.ndim == 2:
         # MATLAB sometimes gives (features, time). Convert to (time, features).
         if arr.shape[0] < arr.shape[1] and arr.shape[0] <= 10:
@@ -260,6 +304,7 @@ def load_full_data_200(file_path="Xtrain.mat", variable_name=None, column=None):
     
     
 
+#This function is for when we want to test on the last 200 points of the orignal data set, so we prepare the data accordingly.
 def make_one_step_windows_200(feature_array_scaled, target_scaled, lookback):
     X = []
     y = []
@@ -270,6 +315,8 @@ def make_one_step_windows_200(feature_array_scaled, target_scaled, lookback):
 
     return np.asarray(X, dtype=float), np.asarray(y, dtype=float)
 
+
+#THis function is for we want to test the last 200 steps with the same seature extraction
 def prepare_recursive_train_data(
     full_data_real,
     lookback=30,
@@ -334,8 +381,10 @@ def prepare_recursive_train_data(
         "lookback": lookback,
         "recursive_steps": recursive_steps,
     }
-    
 
+
+    
+#Dataloader for pytorch models
 def make_train_loader(X_train, y_train, batch_size=64, shuffle=True):
     X_tensor = torch.tensor(X_train, dtype=torch.float32)
     y_tensor = torch.tensor(y_train, dtype=torch.float32)

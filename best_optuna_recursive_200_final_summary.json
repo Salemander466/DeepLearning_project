@@ -1,0 +1,73 @@
+{
+    "best_config": {
+        "model_name": "ForwardLateralCausalCNN",
+        "study_name": "forward_lateral_causal_cnn_recursive_200_tuning",
+        "created_at": "2026-05-04 21:18:12",
+        "file_path": "Xtrain.mat",
+        "variable_name": "Xtrain",
+        "column": null,
+        "lookback": 150,
+        "lookback_candidates": [
+            90,
+            100,
+            110,
+            120,
+            130
+        ],
+        "recursive_steps": 200,
+        "scaler_type": "standard",
+        "framework": "keras",
+        "input_channels": 1,
+        "base_channels": 64,
+        "kernel_size": 3,
+        "dropout": 0.2,
+        "n_trials": 25,
+        "early_stopping_metric": "raw_recursive_200_mae_real_scale",
+        "objective": "stability_penalized_recursive_200_mae",
+        "objective_formula": "local_mean_recursive_200_mae + 0.25 * local_std_recursive_200_mae",
+        "best_trial_number": 11,
+        "best_stability_penalized_objective": 10.650360478812928,
+        "best_recursive_200_mae_real": 2.804111574185323,
+        "best_recursive_200_mse_real": 13.594246106417218,
+        "best_recursive_200_rmse_real": 3.6870375786554193,
+        "best_recursive_200_r2_real": 0.9931529675579145,
+        "local_best_mae": 2.804111574185323,
+        "local_mean_mae": 9.351236183229327,
+        "local_median_mae": 6.70973879348719,
+        "local_std_mae": 5.196497182334404,
+        "best_params": {
+            "lookback": 150,
+            "batch_size": 32,
+            "epochs": 170,
+            "learning_rate": 0.0004828828030938724,
+            "l1_lambda": 2.858981064973126e-06,
+            "l2_lambda": 2.3625291102506e-05,
+            "dropout": 0.2,
+            "grad_clip": 0.2,
+            "patience": 40
+        },
+        "best_epoch_from_trial": 95,
+        "note": "This Optuna study optimizes the assignment metric directly: 200-step recursive MAE after inverse-transforming predictions to the original scale. The lookback window p is also tuned."
+    },
+    "final_retrained_best_metrics": {
+        "best_epoch": 31,
+        "best_recursive_200_mae_real": 4.864811435181903,
+        "best_recursive_200_mse_real": 45.6666319169085,
+        "best_recursive_200_rmse_real": 6.75770907311853,
+        "best_recursive_200_r2_real": 0.9769990253370324
+    },
+    "final_recursive_200_report_metrics": {
+        "n_samples": 200,
+        "mae": 4.864811435181903,
+        "mse": 45.6666319169085,
+        "rmse": 6.75770907311853,
+        "r2": 0.9769990253370324,
+        "median_absolute_error": 3.4365047771484143,
+        "max_error": 31.471113975593198,
+        "residual_mean": 1.3106903171110236,
+        "residual_std": 6.64601915907968,
+        "residual_min": -19.937299277001017,
+        "residual_max": 31.471113975593198,
+        "model_name": "Best Optuna Recursive 200 Forward Lateral Causal CNN"
+    }
+}

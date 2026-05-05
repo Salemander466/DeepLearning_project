@@ -12,7 +12,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from Forward_Lateral_Causal_CNN import l1_l2_regularized_loss, set_seed
 
-
+#This file contains the main training loop for training a single model. It includes functions for training one epoch, evaluating on the validation set, and the main function that orchestrates the training process with early stopping and learning rate scheduling. It also includes a prediction function to get predictions from the trained model.
 def train_one_epoch(
     model,
     train_loader,
@@ -56,6 +56,7 @@ def train_one_epoch(
 
     return total_loss / total_samples
 
+#Evaluation function for one epoch on the validation set. It computes the average MSE and MAE across all batches in the validation set.
 def evaluate_one_epoch(
     model,
     val_loader,
@@ -87,6 +88,8 @@ def evaluate_one_epoch(
 
     return average_mse, average_mae
 
+
+#Main training function that trains the model with early stopping and learning rate scheduling. It returns the best model, the training history, and information about the best epoch and validation performance.
 def train_single_model(
     model,
     X_train,
@@ -212,7 +215,7 @@ def train_single_model(
     return model, history, best_info
 
 
-#Rediction functions 
+#Prediction functions 
 
 def predict_with_model(
     model,
@@ -247,7 +250,7 @@ def predict_with_model(
 
     return predictions
 
-
+#This is for hte 200 step recursive forecasting, which generates predictions one step at a time, feeding the previous predictions back into the model as input for the next prediction. This is done in the scaled space, and then we can inverse transform the predictions back to the original scale for evaluation.
 def train_one_epoch_for_recursive_objective(
     model,
     train_loader,
