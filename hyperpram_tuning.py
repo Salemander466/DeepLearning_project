@@ -562,6 +562,7 @@ def objective(trial):
             learning_rate=learning_rate,
             l1_lambda=l1_lambda,
             l2_lambda=l2_lambda,
+            dropout=dropout,
             grad_clip=grad_clip,
             patience=patience,
             min_delta=1e-6,
