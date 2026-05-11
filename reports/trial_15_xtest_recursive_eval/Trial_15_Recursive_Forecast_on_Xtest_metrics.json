@@ -1,0 +1,14 @@
+{
+  "n_samples": 200,
+  "mae": 39.042143071935186,
+  "mse": 2992.401970223087,
+  "rmse": 54.70285157304953,
+  "r2": -0.7938560860498165,
+  "median_absolute_error": 31.907639530103875,
+  "max_error": 193.73405694955653,
+  "residual_mean": 0.6381635190573198,
+  "residual_std": 54.83639181128198,
+  "residual_min": -193.73405694955653,
+  "residual_max": 129.8675427415341,
+  "model_name": "Trial 15 Recursive Forecast on Xtest"
+}

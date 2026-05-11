@@ -1,51 +1,66 @@
+# ============================================================
+# main.py
+# Run either:
+# 1. Hyperparameter tuning
+# 2. Full Xtrain training + Xtest evaluation
+# ============================================================
 
-from data_loader import prepare_train_val_data
-from util import inspect_mat_file
-
-#Load Data
-
-print(inspect_mat_file("Xtrain.mat"))
-
-data = prepare_train_val_data(
-    file_path="Xtrain.mat",
-    variable_name=None,
-    column=None,
-    lookback=30,
-    val_fraction=0.2,
-    scaler_type="standard",
-    framework="keras",
-)
-
-print("X_train shape:", data["X_train"].shape)
-print("y_train shape:", data["y_train"].shape)
-print("X_val shape:", data["X_val"].shape)
-print("y_val shape:", data["y_val"].shape)
-
-#infer input channels form current data format
+import subprocess
+import sys
+from pathlib import Path
 
 
+PROJECT_DIR = Path("/Users/jacobbae/Documents/UU25/DeepLearning_project")
 
-X_shape = data["X_train"].shape
+# Change these filenames if your scripts have different names.
+HYPERPARAM_SCRIPT = PROJECT_DIR / "hyperpram_tuning.py"
+FULL_TRAIN_SCRIPT = PROJECT_DIR / "single_run_swa.py"
 
-if len(X_shape) != 3:
-    raise ValueError(
-        f"Expected X_train to be 3D. Got shape {X_shape}."
+#The code used to run the hyperparameter tuning and the final training + evaluation. 
+def run_script(script_path: Path):
+    if not script_path.exists():
+        raise FileNotFoundError(f"Could not find script: {script_path}")
+
+    print("\n" + "=" * 80)
+    print(f"Running: {script_path.name}")
+    print("=" * 80 + "\n")
+
+    result = subprocess.run(
+        [sys.executable, str(script_path)],
+        cwd=str(PROJECT_DIR),
     )
 
-lookback = data["lookback"]
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"{script_path.name} failed with exit code {result.returncode}"
+        )
 
-# Keras-style: (samples, lookback, features)
-if X_shape[1] == lookback:
-    input_channels = X_shape[2]
+    print("\n" + "=" * 80)
+    print(f"Finished: {script_path.name}")
+    print("=" * 80 + "\n")
 
-# PyTorch-style: (samples, features, lookback)
-elif X_shape[2] == lookback:
-    input_channels = X_shape[1]
 
-else:
-    raise ValueError(
-        f"Cannot infer input channels from X_train shape {X_shape} "
-        f"and lookback {lookback}."
-    )
+def main():
+    print("\nChoose what to run:")
+    print("1 = Hyperparameter tuning")
+    print("2 = Train final model on full Xtrain and test on Xtest")
+    print("q = Quit")
 
-print("Detected input channels:", input_channels)
+    choice = input("\nEnter choice: ").strip().lower()
+
+    if choice == "1":
+        run_script(HYPERPARAM_SCRIPT)
+
+    elif choice == "2":
+        run_script(FULL_TRAIN_SCRIPT)
+
+    elif choice in {"q", "quit", "exit"}:
+        print("Exiting.")
+
+    else:
+        print(f"Invalid choice: {choice}")
+        print("Use 1, 2, or q.")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,2 @@
+n_samples,mae,mse,rmse,r2,median_absolute_error,max_error,residual_mean,residual_std,residual_min,residual_max,model_name
+200,28.40411579592096,1620.1890007561983,40.251571407290406,0.02874482490037833,24.013034050863194,211.66407158891,-0.18194540152035132,40.35216702414863,-96.63571890065856,211.66407158891,Full Xtrain Retrained Best Optuna Forward Lateral Causal CNN on Xtest

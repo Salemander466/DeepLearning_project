@@ -398,3 +398,117 @@ def make_train_loader(X_train, y_train, batch_size=64, shuffle=True):
         drop_last=False,
     )
     return loader
+
+def make_full_train_windows(feature_array_scaled, target_scaled, lookback):
+    X = []
+    y = []
+
+    for i in range(lookback, len(feature_array_scaled)):
+        X.append(feature_array_scaled[i - lookback:i, :])
+        y.append(target_scaled[i])
+
+    return np.asarray(X, dtype=float), np.asarray(y, dtype=float)
+
+
+def prepare_full_train_data_for_final_model(
+    full_train_real,
+    lookback,
+    scaler_type="standard",
+    framework="keras",
+):
+    full_train_real = np.asarray(full_train_real, dtype=float)
+
+    if full_train_real.ndim == 1:
+        full_train_real = full_train_real.reshape(-1, 1)
+
+    if len(full_train_real) <= lookback:
+        raise ValueError(
+            f"Training data length {len(full_train_real)} is too short for lookback={lookback}."
+        )
+
+    feature_scaler = get_scaler(scaler_type)
+    target_scaler = get_scaler(scaler_type)
+
+    # Fit scalers on the full Xtrain only.
+    feature_scaler.fit(full_train_real)
+    target_scaler.fit(full_train_real[:, [0]])
+
+    train_scaled = feature_scaler.transform(full_train_real)
+    target_scaled = target_scaler.transform(full_train_real[:, [0]]).ravel()
+
+    X_train_raw, y_train = make_full_train_windows(
+        feature_array_scaled=train_scaled,
+        target_scaled=target_scaled,
+        lookback=lookback,
+    )
+
+    if framework == "keras":
+        X_train = X_train_raw
+
+    elif framework == "pytorch":
+        X_train = np.transpose(X_train_raw, (0, 2, 1))
+
+    elif framework == "raw":
+        X_train = X_train_raw
+
+    else:
+        raise ValueError("framework must be one of: keras, pytorch, raw")
+
+    last_scaled_window = train_scaled[-lookback:]
+
+    return {
+        "train_real": full_train_real,
+        "feature_scaler": feature_scaler,
+        "target_scaler": target_scaler,
+        "scaler": target_scaler,
+        "train_scaled": train_scaled,
+        "target_scaled": target_scaled,
+        "X_train": X_train,
+        "y_train": y_train,
+        "last_scaled_window": last_scaled_window,
+        "lookback": lookback,
+    }
+
+
+def prepare_xtest_recursive_eval_data(
+    full_train_real,
+    test_real,
+    lookback,
+    recursive_steps,
+    scaler_type="standard",
+):
+    full_train_real = np.asarray(full_train_real, dtype=float)
+    test_real = np.asarray(test_real, dtype=float)
+
+    if full_train_real.ndim == 1:
+        full_train_real = full_train_real.reshape(-1, 1)
+
+    if test_real.ndim == 1:
+        test_real = test_real.reshape(-1, 1)
+
+    recursive_steps = min(recursive_steps, len(test_real))
+
+    feature_scaler = get_scaler(scaler_type)
+    target_scaler = get_scaler(scaler_type)
+
+    # Fit only on Xtrain. Do not fit on Xtest.
+    feature_scaler.fit(full_train_real)
+    target_scaler.fit(full_train_real[:, [0]])
+
+    train_scaled = feature_scaler.transform(full_train_real)
+    target_scaled = target_scaler.transform(full_train_real[:, [0]]).ravel()
+
+    last_scaled_window = train_scaled[-lookback:]
+
+    return {
+        "train_real": full_train_real,
+        "heldout_200_real": test_real[:recursive_steps, 0].reshape(-1),
+        "feature_scaler": feature_scaler,
+        "target_scaler": target_scaler,
+        "scaler": target_scaler,
+        "train_scaled": train_scaled,
+        "target_scaled": target_scaled,
+        "last_scaled_window": last_scaled_window,
+        "lookback": lookback,
+        "recursive_steps": recursive_steps,
+    }

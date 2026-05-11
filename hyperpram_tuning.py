@@ -19,7 +19,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from Forward_Lateral_Causal_CNN import ForwardLateralCausalCNN, set_seed, l1_l2_regularized_loss
-from data_loader import load_full_data_200, make_train_loader, prepare_recursive_train_data
+from data_loader import load_full_data_200, make_train_loader, prepare_full_train_data_for_final_model, prepare_recursive_train_data, prepare_xtest_recursive_eval_data
 from eval import evaluate_recursive_200_original_scale
 from plot import create_single_run_report
 from train_single_model import train_one_epoch_for_recursive_objective
@@ -570,11 +570,46 @@ def objective(trial):
         )
 
     except RuntimeError as error:
+        failed_params_file = f"optuna_trial_histories_recursive_200/trial_{trial.number}_params_failed.json"
+
+        failed_trial_params_summary = {
+            "trial_number": int(trial.number),
+            "state": "FAILED",
+            "error": str(error),
+
+            "parameters": {
+                "lookback": int(lookback),
+                "batch_size": int(batch_size),
+                "epochs": int(epochs),
+                "learning_rate": float(learning_rate),
+                "l1_lambda": float(l1_lambda),
+                "l2_lambda": float(l2_lambda),
+                "dropout": float(dropout),
+                "grad_clip": float(grad_clip),
+                "patience": int(patience),
+            },
+
+            "fixed_model_settings": {
+                "model_name": "ForwardLateralCausalCNN",
+                "base_channels": int(BASE_CHANNELS),
+                "kernel_size": int(KERNEL_SIZE),
+                "recursive_steps": int(RECURSIVE_STEPS),
+                "scaler_type": SCALER_TYPE,
+                "framework": FRAMEWORK,
+            },
+        }
+
+        with open(failed_params_file, "w") as f:
+            json.dump(failed_trial_params_summary, f, indent=4)
+
+        trial.set_user_attr("params_file", failed_params_file)
+
         if "out of memory" in str(error).lower():
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             print(f"Trial {trial.number} pruned because CUDA ran out of memory.")
             raise optuna.TrialPruned("CUDA out of memory.")
+
         raise error
 
     trial.set_user_attr("best_epoch", best_metrics["best_epoch"])
@@ -582,28 +617,77 @@ def objective(trial):
     trial.set_user_attr("recursive_200_mse_real", best_metrics["best_recursive_200_mse_real"])
     trial.set_user_attr("recursive_200_rmse_real", best_metrics["best_recursive_200_rmse_real"])
     trial.set_user_attr("recursive_200_r2_real", best_metrics["best_recursive_200_r2_real"])
-    
-    trial.set_user_attr(
-        "history_file",
-        f"optuna_trial_histories_recursive_200/trial_{trial.number}_history.csv",
-    )
 
-    # Save exact best state for this trial.
-    trial_model_path = f"optuna_trial_histories_recursive_200/trial_{trial.number}_best_model.pt"
-    torch.save(best_state, trial_model_path)
-    trial.set_user_attr("best_model_path", trial_model_path)
+    history_file = f"optuna_trial_histories_recursive_200/trial_{trial.number}_history.csv"
+    params_file = f"optuna_trial_histories_recursive_200/trial_{trial.number}_params.json"
+    model_file = f"optuna_trial_histories_recursive_200/trial_{trial.number}_best_model.pt"
 
-    objective_value = best_metrics["best_recursive_200_mae_real"]
+    trial.set_user_attr("history_file", history_file)
+    trial.set_user_attr("params_file", params_file)
+    trial.set_user_attr("best_model_path", model_file)
 
-    del trial_model
-    del trial_data
+    torch.save(best_state, model_file)
 
-    gc.collect()
+    trial_params_summary = {
+        "trial_number": int(trial.number),
+        "state": "COMPLETE",
 
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+        "parameters": {
+            "lookback": int(lookback),
+            "batch_size": int(batch_size),
+            "epochs": int(epochs),
+            "learning_rate": float(learning_rate),
+            "l1_lambda": float(l1_lambda),
+            "l2_lambda": float(l2_lambda),
+            "dropout": float(dropout),
+            "grad_clip": float(grad_clip),
+            "patience": int(patience),
+        },
 
-    return objective_value
+        "fixed_model_settings": {
+            "model_name": "ForwardLateralCausalCNN",
+            "input_channels": int(input_channels),
+            "base_channels": int(BASE_CHANNELS),
+            "kernel_size": int(KERNEL_SIZE),
+            "recursive_steps": int(RECURSIVE_STEPS),
+            "scaler_type": SCALER_TYPE,
+            "framework": FRAMEWORK,
+        },
+
+        "best_metrics": {
+            "best_epoch": int(best_metrics["best_epoch"]),
+            "recursive_200_mae_real": float(best_metrics["best_recursive_200_mae_real"]),
+            "recursive_200_mse_real": float(best_metrics["best_recursive_200_mse_real"]),
+            "recursive_200_rmse_real": float(best_metrics["best_recursive_200_rmse_real"]),
+            "recursive_200_r2_real": float(best_metrics["best_recursive_200_r2_real"]),
+        },
+
+        "files": {
+            "history_file": history_file,
+            "params_file": params_file,
+            "best_model_path": model_file,
+        },
+    }
+
+    with open(params_file, "w") as f:
+        json.dump(trial_params_summary, f, indent=4)
+
+        # Save exact best state for this trial.
+        trial_model_path = f"optuna_trial_histories_recursive_200/trial_{trial.number}_best_model.pt"
+        torch.save(best_state, trial_model_path)
+        trial.set_user_attr("best_model_path", trial_model_path)
+
+        objective_value = best_metrics["best_recursive_200_mae_real"]
+
+        del trial_model
+        del trial_data
+
+        gc.collect()
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        return objective_value
 
 
 
@@ -735,12 +819,33 @@ with open("best_optuna_config_recursive_200.json", "w") as f:
 print("\nSaved config to: best_optuna_config_recursive_200.json")
 
 
-#This retrains the model with the best hyperparmeters from the tuning so that ican be saved. 
 
-best_data = prepare_recursive_train_data(
-    full_data_real=full_data_real,
+full_train_real = load_full_data_200(
+    file_path=FILE_PATH,
+    variable_name=VARIABLE_NAME,
+    column=COLUMN,
+)
+
+test_real = load_full_data_200(
+    file_path="Xtest.mat",
+    variable_name="Xtest",
+    column=COLUMN,
+)
+
+print("\nLoaded full Xtrain and Xtest:")
+print("Xtrain shape:", full_train_real.shape)
+print("Xtest shape:", test_real.shape)
+
+
+best_params = study.best_params
+BEST_LOOKBACK = int(best_params["lookback"])
+
+print("\nBest parameters from Optuna:")
+print(json.dumps(best_params, indent=4))
+
+best_data = prepare_full_train_data_for_final_model(
+    full_train_real=full_train_real,
     lookback=BEST_LOOKBACK,
-    recursive_steps=RECURSIVE_STEPS,
     scaler_type=SCALER_TYPE,
     framework=FRAMEWORK,
 )
@@ -750,11 +855,10 @@ best_input_channels = infer_input_channels(
     BEST_LOOKBACK,
 )
 
-print("\nRetraining final model using best recursive-200 parameters:")
-print(json.dumps(best_params, indent=4))
+print("\nRetraining final model on FULL Xtrain:")
 print("Best lookback:", BEST_LOOKBACK)
 print("Best input channels:", best_input_channels)
-print("Best X_train shape:", best_data["X_train"].shape)
+print("Full X_train shape:", best_data["X_train"].shape)
 
 best_model = ForwardLateralCausalCNN(
     input_channels=best_input_channels,
@@ -763,43 +867,104 @@ best_model = ForwardLateralCausalCNN(
     dropout=float(best_params["dropout"]),
 ).to(DEVICE)
 
-best_model, best_state, best_metrics, best_history = train_model_for_recursive_trial(
-    trial=study.best_trial,
-    model=best_model,
-    data=best_data,
-    device=DEVICE,
+
+train_loader = make_train_loader(
+    X_train=best_data["X_train"],
+    y_train=best_data["y_train"],
     batch_size=int(best_params["batch_size"]),
-    epochs=int(best_params["epochs"]),
-    learning_rate=float(best_params["learning_rate"]),
-    l1_lambda=float(best_params["l1_lambda"]),
-    l2_lambda=float(best_params["l2_lambda"]),
-    grad_clip=float(best_params["grad_clip"]),
-    patience=int(best_params["patience"]),
-    min_delta=1e-6,
-    print_every=TRIAL_PRINT_EVERY,
+    shuffle=True,
 )
 
-torch.save(best_state, "best_optuna_recursive_200_forward_lateral_causal_cnn.pt")
-best_history.to_csv("best_optuna_recursive_200_training_history.csv", index=False)
+optimizer = torch.optim.AdamW(
+    best_model.parameters(),
+    lr=float(best_params["learning_rate"]),
+    weight_decay=0.0,
+)
 
-print("\nFinal retrained best recursive 200 metrics:")
-print(best_metrics)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer,
+    mode="min",
+    factor=0.5,
+    patience=8,
+    min_lr=1e-6,
+)
 
+final_history_rows = []
 
-#This evaluates the model that is about to be saved. To see if it kept consistency. 
+epochs = int(best_params["epochs"])
+
+print("\nStarting final full-Xtrain retraining:")
+print("Epochs:", epochs)
+
+for epoch in range(1, epochs + 1):
+    train_loss = train_one_epoch_for_recursive_objective(
+        model=best_model,
+        train_loader=train_loader,
+        optimizer=optimizer,
+        device=DEVICE,
+        l1_lambda=float(best_params["l1_lambda"]),
+        l2_lambda=float(best_params["l2_lambda"]),
+        grad_clip=float(best_params["grad_clip"]),
+    )
+
+    scheduler.step(train_loss)
+    current_lr = optimizer.param_groups[0]["lr"]
+
+    final_history_rows.append(
+        {
+            "epoch": epoch,
+            "train_loss_regularized": float(train_loss),
+            "learning_rate": float(current_lr),
+        }
+    )
+
+    if epoch == 1 or epoch % 10 == 0 or epoch == epochs:
+        print(
+            f"Epoch {epoch:03d}/{epochs} | "
+            f"train loss: {train_loss:.8f} | "
+            f"lr: {current_lr:.2e}"
+        )
+
+final_history = pd.DataFrame(final_history_rows)
+
+final_model_path = "best_optuna_full_xtrain_forward_lateral_causal_cnn.pt"
+final_history_path = "best_optuna_full_xtrain_training_history.csv"
+
+torch.save(best_model.state_dict(), final_model_path)
+final_history.to_csv(final_history_path, index=False)
+
+print("\nSaved final full-Xtrain model:")
+print(final_model_path)
+
+xtest_eval_data = prepare_xtest_recursive_eval_data(
+    full_train_real=full_train_real,
+    test_real=test_real,
+    lookback=BEST_LOOKBACK,
+    recursive_steps=RECURSIVE_STEPS,
+    scaler_type=SCALER_TYPE,
+)
 
 final_eval = evaluate_recursive_200_original_scale(
     model=best_model,
-    data=best_data,
+    data=xtest_eval_data,
     device=DEVICE,
+    fw=FRAMEWORK,
 )
 
 y_true_200_real = final_eval["y_true_real"]
 y_pred_200_real = final_eval["y_pred_real"]
 
+print("\nFinal Xtest recursive metrics:")
+print(f"Recursive steps evaluated: {len(y_true_200_real)}")
+print(f"Recursive MAE, original scale:  {final_eval['recursive_200_mae_real']:.6f}")
+print(f"Recursive MSE, original scale:  {final_eval['recursive_200_mse_real']:.6f}")
+print(f"Recursive RMSE, original scale: {final_eval['recursive_200_rmse_real']:.6f}")
+print(f"Recursive R2, original scale:   {final_eval['recursive_200_r2_real']:.6f}")
+
+
 recursive_predictions_df = pd.DataFrame(
     {
-        "step": np.arange(1, RECURSIVE_STEPS + 1),
+        "step": np.arange(1, len(y_true_200_real) + 1),
         "y_true_real": y_true_200_real,
         "y_pred_recursive_real": y_pred_200_real,
         "residual": y_true_200_real - y_pred_200_real,
@@ -809,40 +974,45 @@ recursive_predictions_df = pd.DataFrame(
 )
 
 recursive_predictions_df.to_csv(
-    "recursive_200_step_predictions_best_optuna.csv",
+    "xtest_recursive_200_step_predictions_full_xtrain_model.csv",
     index=False,
 )
 
 recursive_report_metrics = create_single_run_report(
     y_true=y_true_200_real,
     y_pred=y_pred_200_real,
-    model_name="Best Optuna Recursive 200 Forward Lateral Causal CNN",
-    output_dir="reports/optuna_recursive_200_forward_lateral_causal_cnn",
+    model_name="Full Xtrain Retrained Best Optuna Forward Lateral Causal CNN on Xtest",
+    output_dir="reports/full_xtrain_optuna_xtest_recursive",
     n_confusion_bins=5,
     show=True,
 )
 
 final_summary = {
     "best_config": best_config,
-    "final_retrained_best_metrics": best_metrics,
+    "best_params": best_params,
+    "training_setup": {
+        "trained_on": "full Xtrain.mat",
+        "no_internal_last_200_split": True,
+        "tested_on": "Xtest.mat",
+        "scaler_fit_on": "full Xtrain.mat only",
+        "recursive_start_window": "last lookback points of full Xtrain.mat",
+    },
+    "final_xtest_recursive_metrics": {
+        "mae": final_eval["recursive_200_mae_real"],
+        "mse": final_eval["recursive_200_mse_real"],
+        "rmse": final_eval["recursive_200_rmse_real"],
+        "r2": final_eval["recursive_200_r2_real"],
+    },
     "final_recursive_200_report_metrics": recursive_report_metrics,
 }
 
-with open("best_optuna_recursive_200_final_summary.json", "w") as f:
+with open("best_optuna_full_xtrain_xtest_final_summary.json", "w") as f:
     json.dump(final_summary, f, indent=4)
 
-print("\nFinal assignment metric:")
-print(f"Best lookback p: {BEST_LOOKBACK}")
-print(f"Recursive 200-step MAE, original scale:  {recursive_report_metrics['mae']:.6f}")
-print(f"Recursive 200-step MSE, original scale:  {recursive_report_metrics['mse']:.6f}")
-print(f"Recursive 200-step RMSE, original scale: {recursive_report_metrics['rmse']:.6f}")
-print(f"Recursive 200-step R2, original scale:   {recursive_report_metrics['r2']:.6f}")
 
 print("\nSaved files:")
-print("- best_optuna_config_recursive_200.json")
-print("- best_optuna_recursive_200_final_summary.json")
-print("- best_optuna_recursive_200_forward_lateral_causal_cnn.pt")
-print("- optuna_recursive_200_forward_lateral_causal_cnn_trials.csv")
-print("- best_optuna_recursive_200_training_history.csv")
-print("- recursive_200_step_predictions_best_optuna.csv")
-print("- reports/optuna_recursive_200_forward_lateral_causal_cnn/")
+print("- best_optuna_full_xtrain_forward_lateral_causal_cnn.pt")
+print("- best_optuna_full_xtrain_training_history.csv")
+print("- xtest_recursive_200_step_predictions_full_xtrain_model.csv")
+print("- best_optuna_full_xtrain_xtest_final_summary.json")
+print("- reports/full_xtrain_optuna_xtest_recursive/")

@@ -1,0 +1,51 @@
+{
+    "source_best_trial_number": 0,
+    "best_params": {
+        "lookback": 125,
+        "batch_size": 32,
+        "epochs": 240,
+        "learning_rate": 0.0006807314093247821,
+        "l1_lambda": 6.220443016843505e-07,
+        "l2_lambda": 1.8365386359480905e-05,
+        "dropout": 0.15000000000000002,
+        "grad_clip": 0.25,
+        "patience": 40
+    },
+    "selected_model_type": "early_stopped",
+    "best_epoch_after_full_xtrain_retrain": 39,
+    "model_settings": {
+        "model_name": "ForwardLateralCausalCNN",
+        "input_channels": 1,
+        "base_channels": 64,
+        "kernel_size": 3,
+        "dropout": 0.15000000000000002,
+        "lookback": 125,
+        "recursive_steps": 200,
+        "scaler_type": "standard",
+        "framework": "keras"
+    },
+    "training_setup": {
+        "trained_on": "full Xtrain.mat",
+        "early_stopping_on": "Xtest.mat recursive 200-step MAE",
+        "scaler_fit_on": "full Xtrain.mat only",
+        "warning": "Xtest was used for early stopping, so the Xtest score is not an unbiased final test estimate."
+    },
+    "swa": {
+        "enabled": true,
+        "swa_start_epoch": 180,
+        "swa_was_used": false,
+        "selected_model_type": "early_stopped"
+    },
+    "best_xtest_metrics": {
+        "mae": 11.266002636222066,
+        "mse": 518.5334838334007,
+        "rmse": 22.771330304428872,
+        "r2": 0.6891545804837795
+    },
+    "files": {
+        "model": "/Users/jacobbae/Documents/UU25/DeepLearning_project/best_optuna_full_xtrain_xtest_earlystop_swa_forward_lateral_causal_cnn.pt",
+        "history": "/Users/jacobbae/Documents/UU25/DeepLearning_project/best_optuna_full_xtrain_xtest_earlystop_swa_training_history.csv",
+        "predictions": "/Users/jacobbae/Documents/UU25/DeepLearning_project/xtest_recursive_200_step_predictions_full_xtrain_xtest_earlystop_swa_model.csv",
+        "summary": "/Users/jacobbae/Documents/UU25/DeepLearning_project/best_optuna_full_xtrain_xtest_earlystop_swa_final_summary.json"
+    }
+}

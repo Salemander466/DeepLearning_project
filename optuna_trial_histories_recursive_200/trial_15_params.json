@@ -1,0 +1,36 @@
+{
+    "trial_number": 15,
+    "state": "COMPLETE",
+    "parameters": {
+        "lookback": 150,
+        "batch_size": 32,
+        "epochs": 240,
+        "learning_rate": 0.0008028996841482917,
+        "l1_lambda": 8.133851867508947e-07,
+        "l2_lambda": 1.8173189885609437e-05,
+        "dropout": 0.2,
+        "grad_clip": 0.2,
+        "patience": 45
+    },
+    "fixed_model_settings": {
+        "model_name": "ForwardLateralCausalCNN",
+        "input_channels": 1,
+        "base_channels": 64,
+        "kernel_size": 3,
+        "recursive_steps": 200,
+        "scaler_type": "standard",
+        "framework": "keras"
+    },
+    "best_metrics": {
+        "best_epoch": 63,
+        "recursive_200_mae_real": 4.098444141981184,
+        "recursive_200_mse_real": 40.23702681439784,
+        "recursive_200_rmse_real": 6.343266257567771,
+        "recursive_200_r2_real": 0.9797337619302632
+    },
+    "files": {
+        "history_file": "optuna_trial_histories_recursive_200/trial_15_history.csv",
+        "params_file": "optuna_trial_histories_recursive_200/trial_15_params.json",
+        "best_model_path": "optuna_trial_histories_recursive_200/trial_15_best_model.pt"
+    }
+}

@@ -1,0 +1,113 @@
+{
+    "best_config": {
+        "model_name": "ForwardLateralCausalCNN",
+        "study_name": "forward_lateral_causal_cnn_recursive_200_tuning",
+        "created_at": "2026-05-08 15:08:53",
+        "file_path": "Xtrain.mat",
+        "variable_name": "Xtrain",
+        "column": null,
+        "lookback": 125,
+        "lookback_candidates": [
+            90,
+            100,
+            110,
+            120,
+            130
+        ],
+        "recursive_steps": 200,
+        "scaler_type": "standard",
+        "framework": "keras",
+        "input_channels": 1,
+        "base_channels": 64,
+        "kernel_size": 3,
+        "dropout": 0.15000000000000002,
+        "n_trials": 25,
+        "objective": "recursive_200_mae_real_scale",
+        "early_stopping_metric": "recursive_200_mae_real_scale",
+        "best_trial_number": 0,
+        "best_recursive_200_mae_real": 1.4263026401078867,
+        "best_recursive_200_mse_real": 3.320988619396754,
+        "best_recursive_200_rmse_real": 1.822357983327303,
+        "best_recursive_200_r2_real": 0.9983273131412508,
+        "best_params": {
+            "lookback": 125,
+            "batch_size": 32,
+            "epochs": 240,
+            "learning_rate": 0.0006807314093247821,
+            "l1_lambda": 6.220443016843505e-07,
+            "l2_lambda": 1.8365386359480905e-05,
+            "dropout": 0.15000000000000002,
+            "grad_clip": 0.25,
+            "patience": 40
+        },
+        "best_epoch_from_trial": 57,
+        "note": "This Optuna study optimizes the assignment metric directly: 200-step recursive MAE after inverse-transforming predictions to the original scale. The lookback window p is also tuned."
+    },
+    "best_params": {
+        "lookback": 125,
+        "batch_size": 32,
+        "epochs": 240,
+        "learning_rate": 0.0006807314093247821,
+        "l1_lambda": 6.220443016843505e-07,
+        "l2_lambda": 1.8365386359480905e-05,
+        "dropout": 0.15000000000000002,
+        "grad_clip": 0.25,
+        "patience": 40
+    },
+    "training_setup": {
+        "trained_on": "full Xtrain.mat",
+        "no_internal_last_200_split": true,
+        "tested_on": "Xtest.mat",
+        "early_stopping_on": "Xtest.mat recursive 200-step MAE",
+        "warning": "Xtest was used for early stopping, so the Xtest score is not an unbiased final test estimate.",
+        "scaler_fit_on": "full Xtrain.mat only",
+        "recursive_start_window": "last lookback points of full Xtrain.mat"
+    },
+    "early_stopping": {
+        "source_best_trial_number": 0,
+        "best_epoch": 44,
+        "patience": 40,
+        "min_delta": 1e-06,
+        "best_xtest_recursive_200_mae_real": 18.25461856468364,
+        "best_xtest_recursive_200_mse_real": 966.4645972050076,
+        "best_xtest_recursive_200_rmse_real": 31.088013722414104,
+        "best_xtest_recursive_200_r2_real": 0.4206331846791833
+    },
+    "model_settings": {
+        "model_name": "ForwardLateralCausalCNN",
+        "input_channels": 1,
+        "base_channels": 64,
+        "kernel_size": 3,
+        "dropout": 0.15000000000000002,
+        "lookback": 125,
+        "recursive_steps": 200,
+        "scaler_type": "standard",
+        "framework": "keras"
+    },
+    "final_xtest_recursive_metrics": {
+        "mae": 18.25461856468364,
+        "mse": 966.4645972050076,
+        "rmse": 31.088013722414104,
+        "r2": 0.4206331846791833
+    },
+    "final_recursive_200_report_metrics": {
+        "n_samples": 200,
+        "mae": 18.25461856468364,
+        "mse": 966.4645972050076,
+        "rmse": 31.088013722414104,
+        "r2": 0.4206331846791833,
+        "median_absolute_error": 14.705623217690874,
+        "max_error": 214.68846928065523,
+        "residual_mean": 0.1685342295583588,
+        "residual_std": 31.165568448240837,
+        "residual_min": -214.68846928065523,
+        "residual_max": 143.59955316330897,
+        "model_name": "Full Xtrain Retrained Best Optuna CNN with Xtest Early Stopping"
+    },
+    "saved_files": {
+        "model": "/Users/jacobbae/Documents/UU25/DeepLearning_project/best_optuna_full_xtrain_xtest_earlystop_forward_lateral_causal_cnn.pt",
+        "history": "/Users/jacobbae/Documents/UU25/DeepLearning_project/best_optuna_full_xtrain_xtest_earlystop_training_history.csv",
+        "predictions": "/Users/jacobbae/Documents/UU25/DeepLearning_project/xtest_recursive_200_step_predictions_full_xtrain_xtest_earlystop_model.csv",
+        "report_dir": "/Users/jacobbae/Documents/UU25/DeepLearning_project/reports/full_xtrain_optuna_xtest_earlystop_recursive_SWA"
+    }
+}

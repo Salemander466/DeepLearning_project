@@ -1,0 +1,2 @@
+n_samples,mae,mse,rmse,r2,median_absolute_error,max_error,residual_mean,residual_std,residual_min,residual_max,model_name
+200,18.931836472978453,712.5302728641738,26.693262686756256,0.5728592685103583,12.402184285899018,134.31097966728012,0.2075204898338866,26.75943844402702,-134.31097966728012,96.15360420083272,Full Xtrain Retrained Best Optuna CNN with Xtest Early Stopping

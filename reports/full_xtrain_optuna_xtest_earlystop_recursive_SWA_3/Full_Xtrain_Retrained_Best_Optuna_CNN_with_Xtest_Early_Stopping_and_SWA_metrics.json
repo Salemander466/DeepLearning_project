@@ -1,0 +1,14 @@
+{
+  "n_samples": 200,
+  "mae": 16.784313029497707,
+  "mse": 636.0711485017471,
+  "rmse": 25.220450997191687,
+  "r2": 0.6186942421991886,
+  "median_absolute_error": 11.53840694617794,
+  "max_error": 134.14455211058916,
+  "residual_mean": 0.7979042061516926,
+  "residual_std": 25.271082991382446,
+  "residual_min": -134.14455211058916,
+  "residual_max": 128.62759098039933,
+  "model_name": "Full Xtrain Retrained Best Optuna CNN with Xtest Early Stopping and SWA"
+}

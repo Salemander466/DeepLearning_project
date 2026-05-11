@@ -1,0 +1,14 @@
+{
+  "n_samples": 200,
+  "mae": 28.40411579592096,
+  "mse": 1620.1890007561983,
+  "rmse": 40.251571407290406,
+  "r2": 0.02874482490037833,
+  "median_absolute_error": 24.013034050863194,
+  "max_error": 211.66407158891,
+  "residual_mean": -0.18194540152035132,
+  "residual_std": 40.35216702414863,
+  "residual_min": -96.63571890065856,
+  "residual_max": 211.66407158891,
+  "model_name": "Full Xtrain Retrained Best Optuna Forward Lateral Causal CNN on Xtest"
+}
